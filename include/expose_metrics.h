@@ -14,7 +14,10 @@
 #include <unistd.h> // Para sleep
 
 /**
- * @brief Tamaño del buffer utilizado para leer las métricas.
+ * @brief Tamaño del buffer utilizado para leer datos del sistema de archivos /proc.
+ *
+ * Esta constante define el tamaño del buffer que se utiliza para almacenar
+ * temporalmente los datos leídos desde archivos del sistema.
  */
 #define BUFFER_SIZE 256
 
@@ -29,24 +32,24 @@ void update_cpu_gauge();
 void update_memory_gauge();
 
 /**
- * @brief Actualiza la métrica de uso de I/O del disco.
+ * @brief Actualiza la métrica de uso del estado del disco.
  */
-void update_disk_io_gauge();
+void update_disk_gauge();
 
 /**
- * @brief Actualiza la métrica de uso de I/O del disco.
+ * @brief Actualiza la métrica de uso de la red.
  */
-void update_red_gauge();
+void update_network_gauge();
 
 /**
- * @brief Actualiza la métrica de cantidad de procesos en ejecución.
+ * @brief Actualiza la métrica de procesos en ejecucion.
  */
-void update_proc_number();
+void update_procs_gauge();
 
 /**
- * @brief Actualiza la métrica de cambios de contexto.
+ * @brief Actualiza la métrica de cambios de contexto desde que inicio el sistema.
  */
-void update_context_switches();
+void update_ctxt_gauge();
 
 /**
  * @brief Función del hilo para exponer las métricas vía HTTP en el puerto 8000.
@@ -64,4 +67,3 @@ void init_metrics();
  * @brief Destructor de mutex
  */
 void destroy_mutex();
- 

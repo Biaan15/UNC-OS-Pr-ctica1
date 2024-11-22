@@ -3,20 +3,27 @@
  * @brief Entry point of the system
  */
 
-#include "expose_metrics.h"
+#include "../include/config.h"
+#include "../include/expose_metrics.h"
+#include "../include/metrics.h"
 #include <stdbool.h>
 
 /**
- * @brief Tiempo de espera entre actualizaciones de métricas en segundos.
+ * @brief Tiempo de espera en segundos entre actualizaciones de métricas.
  */
 #define SLEEP_TIME 1
-/**
- * @brief Ejecuta el programa principal.
- * @param argc Cantidad de argumentos.
- * @param argv Argumentos de la línea de comandos.
- * @return 0 si el programa termina correctamente, 1 en caso contrario.
- */
 
+/**
+ * @brief Entry point of the system.
+ *
+ * Este es el punto de entrada de la aplicación. Se encarga de inicializar las métricas,
+ * crear un hilo para exponer las métricas a través de HTTP y actualizar periódicamente
+ * las métricas del sistema en un bucle infinito.
+ *
+ * @param argc Número de argumentos de línea de comandos.
+ * @param argv Array de argumentos de línea de comandos.
+ * @return EXIT_SUCCESS si la ejecución fue exitosa, EXIT_FAILURE en caso de error.
+ */
 int main(int argc, char* argv[])
 {
     init_metrics();
@@ -33,13 +40,15 @@ int main(int argc, char* argv[])
     {
         update_cpu_gauge();
         update_memory_gauge();
-        update_disk_io_gauge();
-        update_red_gauge();
-        update_proc_number();
-        update_context_switches();
+        update_disk_gauge();
+        update_network_gauge();
+        update_procs_gauge();
+        update_ctxt_gauge();
+
+        send_metrics_to_monitor();
+
         sleep(SLEEP_TIME);
     }
 
     return EXIT_SUCCESS;
-} 
- 
+}

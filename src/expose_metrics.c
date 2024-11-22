@@ -1,44 +1,26 @@
-#include "expose_metrics.h"
+#include "../include/expose_metrics.h"
 
 /** Mutex para sincronización de hilos */
 pthread_mutex_t lock;
 
-/**
- * @brief Métrica de Prometheus para el uso de la CPU
- */
+/** Métrica de Prometheus para el uso de CPU */
 static prom_gauge_t* cpu_usage_metric;
 
-/**
- * @brief Métrica de Prometheus para el uso de memoria
- */
+/** Métrica de Prometheus para el uso de memoria */
 static prom_gauge_t* memory_usage_metric;
 
-/**
- * @brief Métrica de Prometheus para el uso de I/O del disco
- */
-static prom_gauge_t* io_disk_usage_metric;
+/** Métrica de Prometheus para el uso del disco */
+static prom_gauge_t* disk_usage_metric;
 
-/**
- * @brief Métrica de Prometheus para el uso de la red
- */
-static prom_gauge_t* red_usage_metric;
+/** Métrica de Prometheus para los bytes totales */
+static prom_gauge_t* network_usage_metric;
 
-/**
- * @brief Métrica de Prometheus para el número de procesos
- */
-static prom_gauge_t* proc_number_metric;
+/** Métrica de Prometheus para los procesos en ejecucion */
+static prom_gauge_t* procs_usage_metric;
 
-/**
- * @brief Métrica de Prometheus para los cambios de contexto
- */
-static prom_gauge_t* context_switches_metric;
+/** Métrica de Prometheus para los procesos en ejecucion */
+static prom_gauge_t* ctxt_usage_metric;
 
-/**
- * @brief Actualiza la métrica de uso de CPU.
- *
- * Obtiene el uso de CPU y actualiza la métrica correspondiente en Prometheus.
- * Si no se puede obtener el uso de CPU, se imprime un mensaje de error.
- */
 void update_cpu_gauge()
 {
     double usage = get_cpu_usage();
@@ -54,12 +36,6 @@ void update_cpu_gauge()
     }
 }
 
-/**
- * @brief Actualiza la métrica de uso de memoria.
- *
- * Obtiene el uso de memoria y actualiza la métrica correspondiente en Prometheus.
- * Si no se puede obtener el uso de memoria, se imprime un mensaje de error.
- */
 void update_memory_gauge()
 {
     double usage = get_memory_usage();
@@ -68,6 +44,7 @@ void update_memory_gauge()
         pthread_mutex_lock(&lock);
         prom_gauge_set(memory_usage_metric, usage, NULL);
         pthread_mutex_unlock(&lock);
+        // printf("Actualizando métrica de memoria: %f\n", usage);
     }
     else
     {
@@ -75,35 +52,28 @@ void update_memory_gauge()
     }
 }
 
-/**
- * @brief Actualiza la métrica de uso de I/O del disco.
- *
- * Obtiene el uso de I/O del disco y actualiza la métrica correspondiente en Prometheus.
- * Si no se puede obtener el uso de I/O del disco, se imprime un mensaje de error.
- */
-
-void update_disk_io_gauge()
+void update_disk_gauge()
 {
-    double usage = get_IO_disco();
+    double usage = get_disk_usage();
     if (usage >= 0)
     {
         pthread_mutex_lock(&lock);
-        prom_gauge_set(io_disk_usage_metric, usage, NULL);
+        prom_gauge_set(disk_usage_metric, usage, NULL);
         pthread_mutex_unlock(&lock);
     }
     else
     {
-        fprintf(stderr, "Error al obtener el uso de memoria\n");
+        fprintf(stderr, "Error al obtener el uso de disco\n");
     }
 }
 
-void update_red_gauge()
+void update_network_gauge()
 {
-    double usage = get_red_usage();
+    double usage = get_network_usage("lo");
     if (usage >= 0)
     {
         pthread_mutex_lock(&lock);
-        prom_gauge_set(red_usage_metric, usage, NULL);
+        prom_gauge_set(network_usage_metric, usage, NULL);
         pthread_mutex_unlock(&lock);
     }
     else
@@ -112,55 +82,38 @@ void update_red_gauge()
     }
 }
 
-/**
- * @brief Actualiza la métrica de procesos en ejecución.
- *
- * Obtiene la cantidad de procesos ejecutandose y actualiza la métrica correspondiente en Prometheus.
- * Si no se puede obtener la cantidad de procesos, se imprime un mensaje de error.
- */
-
-void update_proc_number()
+void update_procs_gauge()
 {
-    double number = get_proc_number();
-    if (number >= 0)
+    int procs_usage = get_process_usage();
+    if (procs_usage >= 0)
     {
         pthread_mutex_lock(&lock);
-        prom_gauge_set(proc_number_metric, number, NULL);
+        prom_gauge_set(procs_usage_metric, procs_usage, NULL);
         pthread_mutex_unlock(&lock);
+        // printf("Actualizando métrica de procesos: %d\n", procs_usage);
     }
     else
     {
-        fprintf(stderr, "Error al obtener la cantidad de procesos\n");
+        fprintf(stderr, "Error al obtener el numero de procesos\n");
     }
 }
-/**
- * @brief Actualiza la métrica de cambios de contexto.
- *
- * Obtiene los cambios de contexto que se están dando y actualiza la métrica correspondiente en Prometheus.
- * Si no se puede obtener la cantidad de cambios de contexto, se imprime un mensaje de error.
- */
 
-void update_context_switches()
+void update_ctxt_gauge()
 {
-    double number = get_context_switches();
-    if (number >= 0)
+    double usage = get_ctxt_usage();
+    if (usage >= 0)
     {
         pthread_mutex_lock(&lock);
-        prom_gauge_set(context_switches_metric, number, NULL);
+        prom_gauge_set(ctxt_usage_metric, usage, NULL);
         pthread_mutex_unlock(&lock);
+        // printf("Actualizando métrica de cambios de contextos: %f\n", usage);
     }
     else
     {
-        fprintf(stderr, "Error al obtener la cantidad de cambios de contexto\n");
+        fprintf(stderr, "Error al obtener el numero de cambios de contexto\n");
     }
 }
 
-/**
- * @brief Expone las métricas vía HTTP en el puerto 8000.
- *
- * Obtiene todas las metricas y las actualiza en Prometheus.
- * Si no se puede iniciar el servidor, se imprime un mensaje de error.
- */
 void* expose_metrics(void* arg)
 {
     (void)arg; // Argumento no utilizado
@@ -187,12 +140,6 @@ void* expose_metrics(void* arg)
     return NULL;
 }
 
-/**
- * @brief Inicializa el mutex y las métricas de Prometheus.
- *
- * Inicializa el mutex y las métricas de Prometheus para el uso de CPU y memoria.
- * Si no se pueden inicializar, se imprime un mensaje de error.
- */
 void init_metrics()
 {
     // Inicializamos el mutex
@@ -221,32 +168,33 @@ void init_metrics()
         fprintf(stderr, "Error al crear la métrica de uso de memoria\n");
     }
 
-    // Creamos la métrica para el uso de I/O de disco
-    io_disk_usage_metric = prom_gauge_new("io_disk_usage_percentage", "Porcentaje de uso de I/O de disco", 0, NULL);
-    if (io_disk_usage_metric == NULL)
+    // Creamos la métrica para el uso del disco
+    disk_usage_metric = prom_gauge_new("disk_usage", "Lecturas y escrituras totales completadas del disco", 0, NULL);
+    if (disk_usage_metric == NULL)
     {
-        fprintf(stderr, "Error al crear la métrica de uso de I/O de disco\n");
+        fprintf(stderr, "Error al crear la métrica de uso del disco\n");
     }
 
-    // Creamos la métrica para el uso de red
-    red_usage_metric = prom_gauge_new("red_usage_percentage", "Porcentaje de uso de red", 0, NULL);
-    if (red_usage_metric == NULL)
+    // Creamos la métrica para los bytes recibidos y enviados de la red
+    network_usage_metric =
+        prom_gauge_new("network_usage_metric", "Bytes totales enviados por la interfaz de red", 0, NULL);
+    if (network_usage_metric == NULL)
     {
-        fprintf(stderr, "Error al crear la métrica de uso de Red\n");
+        fprintf(stderr, "Error al crear la métrica de bytes totales\n");
     }
 
-    // Creamos la métrica para la cantidad de procesos en ejecución
-    proc_number_metric = prom_gauge_new("execution_process_number", "Cantidad de procesos en ejecución", 0, NULL);
-    if (proc_number_metric == NULL)
+    // Creamos la métrica para el uso de los procesos en ejecucion
+    procs_usage_metric = prom_gauge_new("procs_usage_count", "Cantidad de procesos en ejecucion", 0, NULL);
+    if (procs_usage_metric == NULL)
     {
-        fprintf(stderr, "Error al crear la métrica de cantidad de procesos en ejecución\n");
+        fprintf(stderr, "Error al crear la métrica de cantidad de procesos\n");
     }
 
-    // Creamos la métrica para la cantidad de procesos en ejecución
-    context_switches_metric = prom_gauge_new("context_switches", "Cantidad de cambios de contexto", 0, NULL);
-    if (context_switches_metric == NULL)
+    // Creamos la métrica para el numero de cambios de contextos desde que inicio el sistema
+    ctxt_usage_metric = prom_gauge_new("ctxt_usage_count", "Cantidad de cambios de contexto", 0, NULL);
+    if (ctxt_usage_metric == NULL)
     {
-        fprintf(stderr, "Error al crear la métrica de cambios de contexto\n");
+        fprintf(stderr, "Error al crear la métrica de cantidad de cambios de contextos\n");
     }
 
     // Registramos las métricas en el registro por defecto
@@ -258,29 +206,25 @@ void init_metrics()
     {
         fprintf(stderr, "Error al registrar las métricas - cpu\n");
     }
-    if (prom_collector_registry_must_register_metric(io_disk_usage_metric) == NULL)
+    if (prom_collector_registry_must_register_metric(disk_usage_metric) == NULL)
     {
-        fprintf(stderr, "Error al registrar las métricas - IO\n");
+        fprintf(stderr, "Error al registrar las métricas - disk\n");
     }
-    if (prom_collector_registry_must_register_metric(red_usage_metric) == NULL)
+    if (prom_collector_registry_must_register_metric(network_usage_metric) == NULL)
     {
-        fprintf(stderr, "Error al registrar las métricas de uso de red\n");
+        fprintf(stderr, "Error al registrar las métricas - bytes totales\n");
     }
-    if (prom_collector_registry_must_register_metric(proc_number_metric) == NULL)
+    if (prom_collector_registry_must_register_metric(procs_usage_metric) == NULL)
     {
-        fprintf(stderr, "Error al registrar las métricas de cantidad de procesos en ejecución\n");
+        fprintf(stderr, "Error al registrar las métricas - procesos\n");
     }
-    if (prom_collector_registry_must_register_metric(context_switches_metric) == NULL)
+    if (prom_collector_registry_must_register_metric(ctxt_usage_metric) == NULL)
     {
-        fprintf(stderr, "Error al registrar las métricas de cambio de contexto\n");
+        fprintf(stderr, "Error al registrar las métricas - cambios de contexto\n");
     }
 }
 
-/**
- * @brief Destruye el mutex.
- */
 void destroy_mutex()
 {
     pthread_mutex_destroy(&lock);
 }
- 

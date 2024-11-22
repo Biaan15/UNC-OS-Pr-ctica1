@@ -1,4 +1,9 @@
-#include "metrics.h"
+#include "../include/metrics.h"
+
+/**
+ * @brief Tamaño del buffer utilizado para almacenar el nombre del disco.
+ */
+#define SIZE_BUFF 32
 
 double get_memory_usage()
 {
@@ -43,10 +48,6 @@ double get_memory_usage()
     return mem_usage_percent;
 }
 
-/**
- * @brief Obtiene el porcentaje de uso del cpu.
- * @return Porcentaje de uso del cpu.
- */
 double get_cpu_usage()
 {
     static unsigned long long prev_user = 0, prev_nice = 0, prev_system = 0, prev_idle = 0, prev_iowait = 0,
@@ -116,18 +117,12 @@ double get_cpu_usage()
     return cpu_usage_percent;
 }
 
-/**
- * @brief Obtiene el porcentaje de uso de red.
- * @return Porcentaje de uso de red.
- */
-
-double get_IO_disco()
+double get_disk_usage()
 {
     FILE* fp;
     char buffer[BUFFER_SIZE];
-    unsigned long long read_sectors = 0, write_sectors = 0, total_read = 0, total_write = 0;
-    static unsigned long long prev_total_read = 0, prev_total_write = 0;
-    double io_usage_percent = 0.0;
+    unsigned long long reads_completed = 0, writes_completed = 0;
+    double usage = 0;
 
     // Abrir el archivo /proc/diskstats
     fp = fopen("/proc/diskstats", "r");
@@ -137,46 +132,42 @@ double get_IO_disco()
         return -1.0;
     }
 
-    // Leer los valores de lectura y escritura
+    // Leer y procesar todas las líneas del archivo /proc/diskstats
     while (fgets(buffer, sizeof(buffer), fp) != NULL)
     {
-        // Leer los sectores leídos y escritos
-        if (sscanf(buffer, "%*d %*d %*s %*u %*u %*u %llu %*u %*u %llu", &read_sectors, &write_sectors) == 2)
+        char device_name[SIZE_BUFF];
+
+        // Escanear el nombre del dispositivo y los campos necesarios
+        int ret =
+            sscanf(buffer, "%*d %*d %31s %llu %*s %*s %*s %llu", device_name, &reads_completed, &writes_completed);
+
+        // Comparar el nombre del dispositivo con el nombre del disco pasado
+        if (ret == 5 && strcmp(device_name, "sdb") == 0)
         {
-            total_read += read_sectors;   // Agrega al total de lectura el valor de lectura de la linea actual
-            total_write += write_sectors; // Agrega al total de escritua el valor de escritura de la linea actual
+            break; // Si encontramos una coincidencia, salimos del bucle
         }
     }
 
     fclose(fp);
 
-    // Calcular el porcentaje de uso de I/O de disco
-    unsigned long long total_sectors = total_read + total_write;
-    unsigned long long totald = (total_read - prev_total_read) + (total_write - prev_total_write);
-
-    if (total_sectors > 0)
+    // Verificar si se encontraron estadísticas del disco
+    if (reads_completed == 0 && writes_completed == 0)
     {
-        io_usage_percent = ((double)totald / total_sectors) * 100.0;
+        fprintf(stderr, "Error: No se encontraron estadísticas para el disco sdb\n");
+        return usage;
     }
 
-    // Actualizar los valores anteriores
-    prev_total_read = total_read;
-    prev_total_write = total_write;
+    // Calculo total de escrituras y lecturas
+    double total = reads_completed + writes_completed;
 
-    return io_usage_percent;
+    return total;
 }
 
-/**
- * @brief Obtiene el porcentaje de uso de red.
- * @return Porcentaje de uso de red.
- */
-double get_red_usage()
+double get_network_usage(const char* interface)
 {
     FILE* fp;
     char buffer[BUFFER_SIZE];
-    unsigned long long total_rx_bytes = 0, total_tx_bytes = 0;
-    static unsigned long long prev_total_rx_bytes = 0, prev_total_tx_bytes = 0;
-    double net_usage_percent = 0.0;
+    unsigned long long int rx_bytes = 0, tx_bytes = 0;
 
     // Abrir el archivo /proc/net/dev
     fp = fopen("/proc/net/dev", "r");
@@ -186,46 +177,38 @@ double get_red_usage()
         return -1.0;
     }
 
-    // Leer los valores de tráfico de red
+    // Saltar las dos primeras líneas
+    fgets(buffer, sizeof(buffer), fp);
+    fgets(buffer, sizeof(buffer), fp);
+
     while (fgets(buffer, sizeof(buffer), fp) != NULL)
     {
-        unsigned long long rx_bytes = 0, tx_bytes = 0;
-        if (sscanf(buffer, "%*s %llu %*u %*u %*u %*u %*u %*u %*u %llu", &rx_bytes, &tx_bytes) == 2)
+        char iface[32];
+        // Leer el nombre de la interfaz
+        sscanf(buffer, "%31s", iface); // Limitar a 31 caracteres para evitar desbordamiento
+
+        if (strncmp(iface, interface, strlen(interface)) == 0)
         {
-            total_rx_bytes += rx_bytes;
-            total_tx_bytes += tx_bytes;
+            // Cambiar el formato para que coincida con las variables
+            sscanf(buffer, "%*s %llu %*d %*d %*d %*d %*d %*d %llu", &rx_bytes, &tx_bytes);
+            break;
         }
     }
 
     fclose(fp);
 
-    // Calcular el porcentaje de uso de red
-    unsigned long long total_bytes = total_rx_bytes + total_tx_bytes;
-    unsigned long long totald = (total_rx_bytes - prev_total_rx_bytes) + (total_tx_bytes - prev_total_tx_bytes);
+    double total_bytes = (double)(rx_bytes + tx_bytes);
 
-    if (total_bytes > 0)
-    {
-        net_usage_percent = ((double)totald / total_bytes) * 100.0;
-    }
-
-    // Actualizar los valores anteriores
-    prev_total_rx_bytes = total_rx_bytes;
-    prev_total_tx_bytes = total_tx_bytes;
-
-    return net_usage_percent;
+    return total_bytes;
 }
 
-/**
- * @brief Obtiene el número de procesos en ejecución.
- * @return Número de procesos en ejecución.
- */
-double get_proc_number()
+int get_process_usage()
 {
     FILE* fp;
     char buffer[BUFFER_SIZE];
-    unsigned long long proc_running = 0;
+    unsigned int total_process = 0;
 
-    // Abrir el archivo /proc/stat
+    // Abrir el archivo /proc/meminfo
     fp = fopen("/proc/stat", "r");
     if (fp == NULL)
     {
@@ -233,31 +216,36 @@ double get_proc_number()
         return -1.0;
     }
 
-    // Leer el número de procesos en ejecución
+    // Leer los valores de procesos en ejecucion
     while (fgets(buffer, sizeof(buffer), fp) != NULL)
     {
-        if (sscanf(buffer, "procs_running %llu", &proc_running) == 1)
+        if (strncmp(buffer, "procs_running", 13) == 0)
         {
-            break; // Encontrado el número de procesos en ejecución
+            // Extraer el número de procesos en ejecución
+            sscanf(buffer, "procs_running %u", &total_process);
+            break; // Salir del bucle ya que hemos encontrado lo que buscamos
         }
     }
 
     fclose(fp);
 
-    return (double)proc_running;
+    // Verificar si se encontraron ambos valores
+    if (total_process == 0)
+    {
+        fprintf(stderr, "Error al leer la información de procesos desde /proc/stat\n");
+        return -1.0;
+    }
+
+    return total_process;
 }
 
-/**
- * @brief Obtiene el número de cambios de contexto.
- * @return Número de cambios de contexto.
- */
-double get_context_switches()
+double get_ctxt_usage()
 {
     FILE* fp;
     char buffer[BUFFER_SIZE];
-    unsigned long long ctxt = 0;
+    unsigned long ctxt = 0;
 
-    // Abrir el archivo /proc/stat
+    // Abrir el archivo /proc/meminfo
     fp = fopen("/proc/stat", "r");
     if (fp == NULL)
     {
@@ -265,17 +253,25 @@ double get_context_switches()
         return -1.0;
     }
 
-    // Leer el número de cambios de contexto
+    // Leer los valores de cambios de contextos desde que se inicio el sistema
     while (fgets(buffer, sizeof(buffer), fp) != NULL)
     {
-        if (sscanf(buffer, "ctxt %llu", &ctxt) == 1)
+        if (strncmp(buffer, "ctxt", 4) == 0)
         {
-            break; // Encontrado el número de cambios de contexto
+            // Extraer el número de cambios de contextos
+            sscanf(buffer, "ctxt %lu", &ctxt);
+            break; // Salir del bucle ya que hemos encontrado lo que buscamos
         }
     }
 
     fclose(fp);
+
+    // Verificar si se encontraron ambos valores
+    if (ctxt == 0)
+    {
+        fprintf(stderr, "Error al leer la información de cambios de contextos desde /proc/stat\n");
+        return -1.0;
+    }
 
     return (double)ctxt;
 }
- 

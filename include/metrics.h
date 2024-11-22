@@ -9,7 +9,10 @@
 #include <unistd.h>
 
 /**
- * @brief Tamaño del buffer utilizado para leer las métricas.
+ * @brief Tamaño del buffer utilizado para leer datos del sistema de archivos /proc.
+ *
+ * Esta constante define el tamaño del buffer que se utiliza para almacenar
+ * temporalmente los datos leídos desde archivos del sistema.
  */
 #define BUFFER_SIZE 256
 
@@ -34,36 +37,41 @@ double get_memory_usage();
 double get_cpu_usage();
 
 /**
- * @brief Obtiene el porcentaje de uso de I/O del disco desde /proc/diskstats.
+ * @brief Obtiene las estadísticas de uso de disco para un dispositivo específico.
  *
- * Lee los porcentajes de uso del disco  desde /proc/diskstats y calcula el porcentaje de uso del disco.
+ * Lee las estadísticas del disco desde /proc/diskstats y devuelve el número de lecturas
+ * y escrituras completadas para el dispositivo especificado.
  *
- * @return Uso de disco como porcentaje (0.0 a 100.0), o -1.0 en caso de error.
+ * @return El número total de lecturas y escrituras completadas.
  */
-double get_IO_disco();
+double get_disk_usage();
 
 /**
- * @brief Obtiene el porcentaje de uso de la red desde /proc/net/dev.
+ * @brief Obtiene el uso de red de una interfaz específica.
  *
- * Lee los bytes transmitidos y recibidos y calcula el porcentaje de uso de la red.
+ * Lee las estadísticas de paquetes desde /proc/net/dev para la interfaz de red
+ * especificada y almacena la información sobre los paquetes recibidos y transmitidos.
  *
- * @return Uso de red como porcentaje (0.0 a 100.0), o -1.0 en caso de error.
+ * @param interface_name Nombre de la interfaz de red para la cual se desea obtener
+ *        las estadísticas.
+ * @return Total de rx y tx que contiene los datos de uso de la interfaz de red.
  */
-double get_red_usage();
+double get_network_usage(const char* interface_name);
 
 /**
- * @brief Obtiene el número de procesos en ejecución.
+ * @brief Obtiene el número de procesos en ejecución desde /proc/stat.
  *
+ * Lee el número total de procesos en ejecución desde /proc/stat y lo devuelve.
  *
- * @return Numero con la cantidad de procesos en ejecución.
+ * @return Número de procesos en ejecución, o -1 en caso de error.
  */
-double get_proc_number();
+int get_process_usage();
 
 /**
- * @brief Obtiene la cantidad de cambios de contexto desde /proc/stat.
+ * @brief Obtiene el numero de cambios de contexto.
  *
+ * Lee los valores necesarios para calcular el contexto de uso del sistema.
  *
- * @return Número con la cantidad de cambios de contexto.
+ * @return Numero de cambios de contexto, o -1 en caso de error.
  */
-double get_context_switches();
- 
+double get_ctxt_usage();
