@@ -1,51 +1,29 @@
-cmake_minimum_required(VERSION 3.10)
-project(so-i-24-chp2-Biaan15)
+cmake_minimum_required(VERSION 3.28)
+project(so_i_24_1v6n_2 C)
 
-# Establecer el tipo de construcción por defecto
-if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE Release) 
-endif()
+set(CMAKE_C_STANDARD 11)
 
-# Ruta al archivo conan_toolchain.cmake usando CMAKE_BINARY_DIR
-set(CONAN_TOOLCHAIN_FILE "${CMAKE_BINARY_DIR}/../Descargas/TP2/build/Debug/generators/conan_toolchain.cmake")
-message(STATUS "Conan toolchain file: ${CONAN_TOOLCHAIN_FILE}")
+include_directories(include)
 
-# Incluir el archivo conan_toolchain.cmake si existe, de lo contrario mostrar un mensaje de error
-if(EXISTS ${CONAN_TOOLCHAIN_FILE})
-    include(${CONAN_TOOLCHAIN_FILE})
+# Ruta al archivo conan_toolchain.cmake
+if(EXISTS "${CMAKE_BINARY_DIR}/../Descargas/TP2/build/Debug/generators/conan_toolchain.cmake")
+    include(${CMAKE_BINARY_DIR}/../Descargas/TP2/build/Debug/generators/conan_toolchain.cmake)
 else()
-    message(FATAL_ERROR "No se encontró el archivo ${CONAN_TOOLCHAIN_FILE}")
+    message(FATAL_ERROR "No se encontró el archivo conan_toolchain.cmake en ${CMAKE_BINARY_DIR}/../Descargas/TP2/build/Debug/generators")
 endif()
 
-# Incluir directorios de encabezados
-include_directories(${CMAKE_SOURCE_DIR}/include)
-include_directories(${CMAKE_SOURCE_DIR}/lib)
-include_directories(${CONAN_INCLUDE_DIRS}) 
+# Buscar las librerías requeridas
+find_library(PROM_LIB prom REQUIRED)
+find_library(PROMHTTP_LIB promhttp REQUIRED)
+find_library(MICROHTTPD_LIB microhttpd REQUIRED)
 
-# Añadir el ejecutable
-add_executable(so-i-24-chp2-Biaan15
+add_executable(so_i_24_1v6n_2
+    include/expose_metrics.h
+    include/metrics.h
+    src/expose_metrics.c
     src/main.c
     src/metrics.c
-    src/expose_metrics.c
-    src/config.c
 )
 
-add_library(so-i-24-chp2-Biaan15lib STATIC
-    src/metrics.c
-    src/expose_metrics.c
-    src/config.c
-)
-
-# Añadir el directorio donde se instalan las librerías compartidas (instaladas con sudo make install)
-link_directories(/usr/local/lib)
-
-target_link_libraries(so-i-24-chp2-Biaan15 PRIVATE so-i-24-chp2-Biaan15_lib)
-
-find_package(cJSON REQUIRED)
-
-# Vincular las librerías libprom y libpromhttp desde /usr/local/lib
-target_link_libraries(so-i-24-chp2-Biaan15_lib
-    /usr/local/lib/libprom.so
-    /usr/local/lib/libpromhttp.so
-    cjson::cjson
-)
+# Vincular las librerías
+target_link_libraries(so_i_24_1v6n_2 ${PROM_LIB} ${PROMHTTP_LIB} ${MICROHTTPD_LIB} pthread)
