@@ -6,8 +6,8 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release) 
 endif()
 
-# Ruta al archivo conan_toolchain.cmake
-set(CONAN_TOOLCHAIN_FILE "${CMAKE_SOURCE_DIR}/../build/Debug/generators/conan_toolchain.cmake")
+# Ruta al archivo conan_toolchain.cmake usando CMAKE_BINARY_DIR
+set(CONAN_TOOLCHAIN_FILE "${CMAKE_BINARY_DIR}/../Descargas/TP2/build/Debug/generators/conan_toolchain.cmake")
 message(STATUS "Conan toolchain file: ${CONAN_TOOLCHAIN_FILE}")
 
 # Incluir el archivo conan_toolchain.cmake si existe, de lo contrario mostrar un mensaje de error
@@ -20,7 +20,7 @@ endif()
 # Incluir directorios de encabezados
 include_directories(${CMAKE_SOURCE_DIR}/include)
 include_directories(${CMAKE_SOURCE_DIR}/lib)
-include_directories(${CONAN_INCLUDE_DIRS})
+include_directories(${CONAN_INCLUDE_DIRS}) 
 
 # Añadir el ejecutable
 add_executable(so-i-24-chp2-Biaan15
