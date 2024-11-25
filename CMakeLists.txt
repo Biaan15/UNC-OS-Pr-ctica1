@@ -6,12 +6,21 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release) 
 endif()
 
-include(${CMAKE_BINARY_DIR}/conan_toolchain.cmake)
+# Ruta al archivo conan_toolchain.cmake
+set(CONAN_TOOLCHAIN_FILE "${CMAKE_SOURCE_DIR}/../build/Debug/generators/conan_toolchain.cmake")
+message(STATUS "Conan toolchain file: ${CONAN_TOOLCHAIN_FILE}")
+
+# Incluir el archivo conan_toolchain.cmake si existe, de lo contrario mostrar un mensaje de error
+if(EXISTS ${CONAN_TOOLCHAIN_FILE})
+    include(${CONAN_TOOLCHAIN_FILE})
+else()
+    message(FATAL_ERROR "No se encontró el archivo ${CONAN_TOOLCHAIN_FILE}")
+endif()
 
 # Incluir directorios de encabezados
 include_directories(${CMAKE_SOURCE_DIR}/include)
 include_directories(${CMAKE_SOURCE_DIR}/lib)
-include_directories(${CONAN_INCLUDE_DIRS}) 
+include_directories(${CONAN_INCLUDE_DIRS})
 
 # Añadir el ejecutable
 add_executable(so-i-24-chp2-Biaan15
@@ -32,7 +41,6 @@ link_directories(/usr/local/lib)
 
 target_link_libraries(so-i-24-chp2-Biaan15 PRIVATE so-i-24-chp2-Biaan15_lib)
 
-
 find_package(cJSON REQUIRED)
 
 # Vincular las librerías libprom y libpromhttp desde /usr/local/lib
@@ -41,4 +49,3 @@ target_link_libraries(so-i-24-chp2-Biaan15_lib
     /usr/local/lib/libpromhttp.so
     cjson::cjson
 )
-
